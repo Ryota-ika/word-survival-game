@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>ワードサバイバル</title>
+  <style>
+    body {
+      font-family: "Segoe UI", sans-serif;
+      background: #f6f7fb;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .card {
+      background: white;
+      padding: 24px;
+      border-radius: 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      width: 90%;
+      max-width: 420px;
+      text-align: center;
+    }
+    h1 {
+      font-size: 1.3rem;
+      margin-bottom: 0.8rem;
+    }
+    input, button {
+      padding: 10px;
+      font-size: 1rem;
+      margin: 6px 0;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      width: 100%;
+    }
+    button {
+      background: #0078ff;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #005fcc;
+    }
+    .hidden { display: none; }
+    .keywords {
+      text-align: left;
+      margin-top: 1rem;
+    }
+    textarea {
+      width: 100%;
+      height: 60px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      padding: 8px;
+      resize: none;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- STEP 1: 人数設定 -->
+  <div class="card" id="setup">
+    <h1>ワードサバイバル</h1>
+    <p>まずは人数を決めてください。</p>
+    <input id="playerCount" type="number" placeholder="プレイヤー人数" min="2">
+    <button onclick="startInput()">入力を開始</button>
+  </div>
+
+  <!-- STEP 2: 順番にワード入力 -->
+  <div class="card hidden" id="wordInput">
+    <h1 id="inputTitle">プレイヤー1のワード入力</h1>
+    <p>プレイヤー１に見られないように入力してください。</p>
+    <textarea id="wordField" placeholder="あなたのワードを入力"></textarea>
+    <button onclick="nextPlayer()">次のプレイヤーへ</button>
+  </div>
+
+  <!-- STEP 3: 共有URL表示 -->
+  <div class="card hidden" id="share">
+    <h1>全員の登録が完了！</h1>
+    <p>以下のURLを全員に共有してください。<br>
+    各自、自分の番号を指定して開くと「自分以外のワード」が見えます。</p>
+    <input id="shareUrl" readonly>
+    <button onclick="copyUrl()">URLをコピー</button>
+  </div>
+
+  <!-- STEP 4: 各自が見る画面 -->
+  <div class="card hidden" id="game">
+    <h1>他のプレイヤーのワード</h1>
+    <div id="keywords" class="keywords"></div>
+    <button onclick="location.href='index.html'">最初に戻る</button>
+  </div>
+
+  <script>
+    let words = [];
+    let currentIndex = 1;
+    let playerCount = 0;
+
+    function startInput() {
+      playerCount = parseInt(document.getElementById("playerCount").value);
+      if (!playerCount || playerCount < 2) {
+        alert("2人以上で入力してください。");
+        return;
+      }
+      document.getElementById("setup").classList.add("hidden");
+      document.getElementById("wordInput").classList.remove("hidden");
+      updateInputTitle();
+    }
+
+    function updateInputTitle() {
+      document.getElementById("inputTitle").innerText = `プレイヤー${currentIndex}のワード入力`;
+      document.getElementById("wordField").value = "";
+    }
+
+    function nextPlayer() {
+      const w = document.getElementById("wordField").value.trim();
+      if (!w) {
+        alert("ワードを入力してください。");
+        return;
+      }
+      words.push(w);
+
+      if (currentIndex < playerCount) {
+        currentIndex++;
+        updateInputTitle();
+      } else {
+        showShareUrl();
+      }
+    }
+
+    function showShareUrl() {
+      document.getElementById("wordInput").classList.add("hidden");
+      document.getElementById("share").classList.remove("hidden");
+
+      // ワードをURLエンコードして保存
+      const encoded = encodeURIComponent(JSON.stringify(words));
+      const baseUrl = location.origin + location.pathname;
+      const url = `${baseUrl}?data=${encoded}`;
+      document.getElementById("shareUrl").value = url;
+    }
+
+    function copyUrl() {
+      const input = document.getElementById("shareUrl");
+      input.select();
+      document.execCommand("copy");
+      alert("URLをコピーしました！");
+    }
+
+    // URLからデータがある場合：各自の閲覧画面
+    const params = new URLSearchParams(location.search);
+    if (params.get("data")) {
+      const decoded = JSON.parse(decodeURIComponent(params.get("data")));
+      words = decoded;
+
+      const playerNum = prompt(`あなたのプレイヤー番号を入力してください（1〜${words.length}）`);
+      const num = parseInt(playerNum);
+
+      if (!num || num < 1 || num > words.length) {
+        alert("番号が無効です。");
+        location.href = "index.html";
+      } else {
+        const others = words.map((w, i) => i + 1 !== num ? `プレイヤー${i + 1}：${w}` : null).filter(Boolean);
+        document.body.innerHTML = `
+          <div class="card">
+            <h1>他のプレイヤーのワード</h1>
+            <div class="keywords">${others.map(w => `<div>• ${w}</div>`).join("")}</div>
+            <button onclick="location.href='index.html'">最初に戻る</button>
+          </div>
+        `;
+      }
+    }
+  </script>
+</body>
+</html>
